@@ -12,7 +12,6 @@ using OnboardingFunction.Configuration;
 namespace OnboardingFunction.Services;
 internal class OnboardingService : IOnboardingService
 {
-    private readonly IConfiguration _config;
     private readonly ApiManagementSettings _apimSettings;
 
     public OnboardingService(IOptions<ApiManagementSettings> apimSettings)
@@ -24,9 +23,9 @@ internal class OnboardingService : IOnboardingService
     {
         // Basic guard
         if (manifest is null) throw new ArgumentNullException(nameof(manifest));
+        if (string.IsNullOrEmpty(manifest.Client)) throw new ArgumentException("Client is required", nameof(manifest));
         if (string.IsNullOrWhiteSpace(manifest.OpenApiUrl)) throw new ArgumentException("OpenApiUrl is required", nameof(manifest));
 
-        // These could be moved to configuration later
         string subscriptionId = _apimSettings.SubscriptionId ?? throw new InvalidOperationException("Subscription ID is not configured.");
         string resourceGroup = _apimSettings.ResourceGroup ?? throw new InvalidOperationException("Resource Group is not configured.");
         string apimName = _apimSettings.ServiceName ?? throw new InvalidOperationException("API Management Service Name is not configured.");
@@ -51,17 +50,16 @@ internal class OnboardingService : IOnboardingService
 
         // Create a unique API ID from client
         string apiId = (manifest.Client ?? "client").ToLowerInvariant().Replace(" ", "-");
-        if (string.IsNullOrWhiteSpace(apiId)) apiId = "imported-api";
+        if (string.IsNullOrWhiteSpace(apiId)) throw new ArgumentException("Client name results in invalid API ID.", nameof(manifest));
 
         ApiCollection apis = apim.GetApis();
 
-        // Import from OpenAPI URL. Equivalent to Portal -> Add API -> OpenAPI -> From URL
+        // Import from OpenAPI URL
         var importContent = new ApiCreateOrUpdateContent
         {
-            DisplayName = manifest.Client ?? "Imported API",
+            DisplayName = manifest.Client,
             Path = apiId,
-            // Import specific settings
-            Format = ContentFormat.OpenApiLink, // URL to OpenAPI
+            Format = ContentFormat.OpenApiLink,
             Value = manifest.OpenApiUrl,
         };
 
