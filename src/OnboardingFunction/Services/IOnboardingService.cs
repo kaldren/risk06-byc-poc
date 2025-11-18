@@ -1,5 +1,5 @@
 ﻿namespace OnboardingFunction.Services;
-internal interface IOnboardingService
+public interface IOnboardingService
 {
-    Task StartOnboardingAsync(Manifest manifest);
+    Task StartOnboardingAsync(Manifest manifest = null);
 }
