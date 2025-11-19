@@ -1,13 +1,18 @@
-﻿using System.Net;
-using Azure;
+﻿using Azure;
 using Azure.Core;
 using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.ApiManagement;
 using Azure.ResourceManager.ApiManagement.Models;
+using Azure.ResourceManager.Resources;
+using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using OnboardingFunction.Configuration;
+using System.Net;
+using System.Text.RegularExpressions;
+using System.Xml.Serialization;
 
 namespace OnboardingFunction.Services;
 internal class OnboardingService : IOnboardingService
@@ -69,5 +74,82 @@ internal class OnboardingService : IOnboardingService
 
         // Optionally set a revision to 1 if newly created
         // No-op: API ARM will create as revision 1 by default.
+    }
+
+    public async Task StartScriptOnboardingAsync(Stream script)
+    {
+        string subscriptionId = _apimSettings.SubscriptionId ?? throw new InvalidOperationException("Subscription ID is not configured.");
+        string resourceGroup = _apimSettings.ResourceGroup ?? throw new InvalidOperationException("Resource Group is not configured.");
+        string apimName = _apimSettings.ServiceName ?? throw new InvalidOperationException("API Management Service Name is not configured.");
+
+        // Authenticate with DefaultAzureCredential (supports MSI when deployed)
+        TokenCredential credential = new DefaultAzureCredential();
+        ArmClient arm = new ArmClient(credential);
+
+        // Get APIM service resource
+        var apimId = ApiManagementServiceResource.CreateResourceIdentifier(subscriptionId, resourceGroup, apimName);
+        ApiManagementServiceResource apim = arm.GetApiManagementServiceResource(apimId);
+        ApiCollection apis = apim.GetApis();
+
+        // GET API Called "script-api"
+        string apiId = "client-api";
+        ApiResource api = await apis.GetAsync(apiId);
+
+        var operations = api.GetApiOperations();
+
+        string policyXml = $"""
+            <policies>
+              <inbound>
+                <base />
+                <set-header name="x-module-id" exists-action="override">
+                  <value>new</value>
+                </set-header>
+              </inbound>
+              <backend>
+                <base />
+              </backend>
+              <outbound>
+                <base />
+              </outbound>
+              <on-error>
+                <base />
+              </on-error>
+            </policies>
+            """;
+
+        var createOp = await operations.CreateOrUpdateAsync(WaitUntil.Completed, "new-operation", new ApiOperationData 
+        {
+            DisplayName = "New Operation",
+            Description = "This operation adds two numbers.",
+            Method = "POST",
+            UriTemplate = "/new",
+        });
+
+        var policyData = new PolicyContractData
+        {
+            Format = PolicyContentFormat.Xml,
+            Value = policyXml
+        };
+
+        var opResource = createOp.Value;
+
+        var apiPolicy = await opResource.GetApiOperationPolicies().CreateOrUpdateAsync(WaitUntil.Completed, PolicyName.Policy, policyData);
+
+        // Read script and process
+        using var reader = new StreamReader(script);
+        string content = reader.ReadToEnd();
+
+        List<string> functions = ExtractFunctions(content);
+
+        throw new NotImplementedException();
+    }
+
+    private static List<string> ExtractFunctions(string pythonCode)
+    {
+        var regex = new Regex(@"^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", RegexOptions.Multiline);
+        return regex.Matches(pythonCode)
+                    .Select(m => m.Groups[1].Value)
+                    .Distinct()
+                    .ToList();
     }
 }

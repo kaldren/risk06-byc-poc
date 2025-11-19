@@ -29,4 +29,11 @@ public class OnboardingFunction
         await _onboardingService.StartOnboardingAsync(manifest);
         return new OkObjectResult($"Onboarding started for {manifest.Client}.");
     }
+
+    // Blob trigger that takes python script , opens it, and returns some output
+    [Function(nameof(RunBlob))]
+    public async Task RunBlob([BlobTrigger("scripts/{name}", Connection = "AzureWebJobsStorage")] Stream script, string name)
+    {
+        await _onboardingService.StartScriptOnboardingAsync(script);
+    }
 }
