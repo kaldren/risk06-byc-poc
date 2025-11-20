@@ -15,15 +15,35 @@ public class ModulesController : ControllerBase
         _executeModuleService = executeModuleService;
     }
 
+    // Onboard a new module
+    [HttpPost("onboard")]
+    public IActionResult OnboardModule([FromBody] ModuleManifest manifest)
+    {
+        // The manifest contains metadata about the module being onboarded.
+        // E.g., name, version, description, endpoints, parameters, return types.
+
+        // Prerequisites:
+        // The module is packaged as a ZIP file and uploaded to blob storage with the same name as manifest.Name
+        // (this can happen in this method as well where we have UI that requires ZIP file and manifest together)
+
+        // Business logic:
+        // Validate manifest
+        // Insert the manifest into the database against the module record
+
+        return Ok($"Module {manifest.Name} onboarded successfully.");
+    }
+
     // Get list of modules and their metadata
     [HttpGet]
     public IActionResult GetModules()
     {
-        var modules = new Module[]
+        // In a real implementation, this data would come from a database
+
+        var modules = new ModuleResponse[]
         {
-            new Module
+            new ModuleResponse
             {
-                Name = "MathModule",
+                Name = "MathModule", // This module needs to exist in the system as ZIP with the same name (blob storage)
                 Version = "1.0.0",
                 Description = "Sample module with arithmetic and string operations.",
                 Endpoints = new List<ModuleEndpoint>
@@ -59,26 +79,16 @@ public class ModulesController : ControllerBase
                     }
                 }
             }
-                };
+        };
 
         return Ok(modules);
     }
 
-    [HttpPost("onboard")]
-    public IActionResult OnboardModule([FromBody] Module module)
-    {
-        // Register module
-        // 1. Add to queue storage
-        // 2. Function app processes it and adds it to the system
-
-        return Ok($"Module {module.Name} added successfully.");
-    }
-
+    // Execute a module endpoint
     [HttpPost("execute")]
     public async Task<IActionResult> ExecuteModule([FromBody] ExecuteModuleRequest payload)
     {
-        // Validate payload
-
+        // Enqueue the module execution request so that it can be processed asynchronously by a Function App (Python executor)
         await _executeModuleService.EnqueueModuleForExecutionAsync(payload);
 
         return Ok($"Enqueued module {payload.Module} for execution at endpoint {payload.Endpoint}");

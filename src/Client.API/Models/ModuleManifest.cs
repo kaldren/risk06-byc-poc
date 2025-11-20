@@ -2,14 +2,13 @@
 
 namespace Client.API.Models;
 
-public class Module
+public class ModuleManifest
 {
     public string? Name { get; set; }
     public string? Version { get; set; }
     public string? Description { get; set; }
     public List<ModuleEndpoint> Endpoints { get; set; } = new();
 }
-
 public class ModuleEndpoint
 {
     public string? Name { get; set; }
