@@ -84,6 +84,13 @@ public class ModulesController : ControllerBase
         return Ok(modules);
     }
 
+    // Get module by name
+    [HttpGet]
+    public IActionResult GetModuleByName(string module)
+    {
+        throw new NotImplementedException();
+    }
+
     // Execute a module endpoint
     [HttpPost("execute")]
     public async Task<IActionResult> ExecuteModule([FromBody] ExecuteModuleRequest payload)
