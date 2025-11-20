@@ -1,3 +1,4 @@
+using Client.API.Services;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,8 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Local Development Server"
     });
 });
+
+builder.Services.AddScoped<IExecuteModuleService, ExecuteModuleService>();
 
 var app = builder.Build();
 
