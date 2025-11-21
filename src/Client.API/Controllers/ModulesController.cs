@@ -125,14 +125,14 @@ public class ModulesController : ControllerBase
         return Ok($"Module {manifest.Name} onboarded successfully.");
     }
 
-    // Get list of modules and their metadata
+    // Get all modules
     [HttpGet]
     public IActionResult GetModules()
     {
         return Ok(_modules);
     }
 
-    // Get module by name
+    // Get a single module
     [HttpGet("{moduleName}")]
     public IActionResult GetModuleByName(string moduleName)
     {
@@ -146,12 +146,12 @@ public class ModulesController : ControllerBase
         return Ok(module);
     }
 
-    // Execute a module endpoint
+    // Execute a module
     [HttpPost("execute")]
     public async Task<IActionResult> ExecuteModule([FromBody] ExecuteModuleRequest payload)
     {
         // Enqueue the module execution request so that it can be processed asynchronously by a Function App (Python executor)
-        await _executeModuleService.EnqueueModuleForExecutionAsync(payload);
+        //await _executeModuleService.EnqueueModuleForExecutionAsync(payload);
 
         return Ok($"Enqueued module {payload.Module} for execution at endpoint {payload.Endpoint}");
     }
